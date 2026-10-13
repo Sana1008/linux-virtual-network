@@ -1,0 +1,92 @@
+┌──(sana㉿kali-Sana)-[/home/sana/projects]
+└─PS> cd linux-virtual-network
+
+┌──(sana㉿kali-Sana)-[/home/sana/projects/linux-virtual-network]
+└─PS> nano nat.nft                          
+
+┌──(sana㉿kali-Sana)-[/home/sana/projects/linux-virtual-network]
+└─PS> ip route show default
+default via 192.168.0.1 dev wlan0 proto dhcp src 192.168.0.218 metric 600 
+
+┌──(sana㉿kali-Sana)-[/home/sana/projects/linux-virtual-network]
+└─PS> sudo nft delete table ip lvc_nat
+[sudo] password for sana: 
+
+┌──(sana㉿kali-Sana)-[/home/sana/projects/linux-virtual-network]
+└─PS> sudo nft -f nat.nft             
+
+┌──(sana㉿kali-Sana)-[/home/sana/projects/linux-virtual-network]
+└─PS> sudo nft list table ip lvc_nat
+table ip lvc_nat {
+        chain postrouting {
+                type nat hook postrouting priority srcnat; policy accept;
+                ip saddr 10.10.0.0/16 oifname "wlan0" masquerade
+        }
+}
+
+┌──(sana㉿kali-Sana)-[/home/sana/projects/linux-virtual-network]
+└─PS> sudo ip netns exec lvc-client ping -c 3 1.1.1.1
+PING 1.1.1.1 (1.1.1.1) 56(84) bytes of data.
+64 bytes from 1.1.1.1: icmp_seq=1 ttl=249 time=15.8 ms
+64 bytes from 1.1.1.1: icmp_seq=2 ttl=249 time=20.8 ms                                                                                                                   
+64 bytes from 1.1.1.1: icmp_seq=3 ttl=249 time=15.9 ms                                                                                                                   
+                                                                                                                                                                         
+--- 1.1.1.1 ping statistics ---                                                                                                                                          
+3 packets transmitted, 3 received, 0% packet loss, time 2004ms                                                                                                           
+rtt min/avg/max/mdev = 15.799/17.496/20.765/2.311 ms                                                                                                                     
+                                                                                                                                                                         
+┌──(sana㉿kali-Sana)-[/home/sana/projects/linux-virtual-network]                                                                                                         
+└─PS> sudo ip netns exec lvc_router ping -c 3 10.10.99.1                                                                                                                 
+[sudo] password for sana:                                                                                                                                                
+Cannot open network namespace "lvc_router": No such file or directory
+
+┌──(sana㉿kali-Sana)-[/home/sana/projects/linux-virtual-network]
+└─PS> sudo ip netns exec lvc-router ping -c 3 10.10.99.1                                                                                                                 
+PING 10.10.99.1 (10.10.99.1) 56(84) bytes of data.
+64 bytes from 10.10.99.1: icmp_seq=1 ttl=64 time=0.051 ms
+64 bytes from 10.10.99.1: icmp_seq=2 ttl=64 time=0.060 ms
+64 bytes from 10.10.99.1: icmp_seq=3 ttl=64 time=0.059 ms
+
+--- 10.10.99.1 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2056ms
+rtt min/avg/max/mdev = 0.051/0.056/0.060/0.004 ms
+
+┌──(sana㉿kali-Sana)-[/home/sana/projects/linux-virtual-network]
+└─PS> sudo ip netns exec lvc-client ping -c 3 
+ping: usage error: Destination address required
+
+┌──(sana㉿kali-Sana)-[/home/sana/projects/linux-virtual-network]
+└─PS> sudo ip netns exec lvc-client ping -c 3 1.1.1.1                                                                                                                    
+PING 1.1.1.1 (1.1.1.1) 56(84) bytes of data.
+64 bytes from 1.1.1.1: icmp_seq=1 ttl=249 time=17.8 ms
+64 bytes from 1.1.1.1: icmp_seq=2 ttl=249 time=17.6 ms
+64 bytes from 1.1.1.1: icmp_seq=3 ttl=249 time=25.4 ms
+
+--- 1.1.1.1 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2004ms
+rtt min/avg/max/mdev = 17.633/20.278/25.376/3.605 ms
+
+┌──(sana㉿kali-Sana)-[/home/sana/projects/linux-virtual-network]
+└─PS> ip route show default                                                                                                                                              
+default via 192.168.0.1 dev wlan0 proto dhcp src 192.168.0.218 metric 600 
+
+┌──(sana㉿kali-Sana)-[/home/sana/projects/linux-virtual-network]
+└─PS> sudo tcpdump -i wlan0 -w nat.pcap icmp                                                                                                                             
+tcpdump: listening on wlan0, link-type EN10MB (Ethernet), snapshot length 262144 bytes
+^C10 packets captured
+10 packets received by filter
+0 packets dropped by kernel
+
+┌──(sana㉿kali-Sana)-[/home/sana/projects/linux-virtual-network]
+└─PS> sudo tcpdump -r nat.pcap -nn                                                                                                                                       
+reading from file nat.pcap, link-type EN10MB (Ethernet), snapshot length 262144
+23:02:23.954278 IP 192.168.0.218 > 1.1.1.1: ICMP echo request, id 13278, seq 1, length 64
+23:02:23.973033 IP 1.1.1.1 > 192.168.0.218: ICMP echo reply, id 13278, seq 1, length 64
+23:02:24.956419 IP 192.168.0.218 > 1.1.1.1: ICMP echo request, id 13278, seq 2, length 64
+23:02:24.973494 IP 1.1.1.1 > 192.168.0.218: ICMP echo reply, id 13278, seq 2, length 64
+23:02:25.957974 IP 192.168.0.218 > 1.1.1.1: ICMP echo request, id 13278, seq 3, length 64
+23:02:25.980389 IP 1.1.1.1 > 192.168.0.218: ICMP echo reply, id 13278, seq 3, length 64
+23:02:26.959831 IP 192.168.0.218 > 1.1.1.1: ICMP echo request, id 13278, seq 4, length 64
+23:02:26.988452 IP 1.1.1.1 > 192.168.0.218: ICMP echo reply, id 13278, seq 4, length 64
+23:02:27.961875 IP 192.168.0.218 > 1.1.1.1: ICMP echo request, id 13278, seq 5, length 64
+23:02:28.074321 IP 1.1.1.1 > 192.168.0.218: ICMP echo reply, id 13278, seq 5, length 64

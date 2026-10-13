@@ -1,0 +1,8 @@
+table inet lvc_firewall {
+    chain forward {
+        type filter hook forward priority 0;
+        policy accept;
+
+        ip saddr 10.10.1.0/24 ip daddr 10.10.2.0/24 icmp type echo-request counter drop
+    }
+}
